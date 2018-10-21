@@ -1,5 +1,8 @@
 package com.egrasoft.commentremover.service;
 
+import java.util.Arrays;
+import java.util.List;
+
 import static java.util.Arrays.stream;
 import static java.util.stream.Collectors.joining;
 
@@ -14,14 +17,23 @@ public class RegexpService {
     }
 
     public String removeComments(String origin) {
-        String noBlockComments = origin
+        String literalEscaped = stream(origin.split("\n"))
+                .map(line -> line.replaceAll("'(.*?)\\(\\*(.*?)\\*\\)(.*?)'", "'$1(&*$2*&)$3'"))
+                .map(line -> line.replaceAll("'(.*?)\\{(.*?)}(.*?)'", "'$1(&&$2&&)$3'"))
+                .collect(joining("\n"));
+        String noBlockComments = literalEscaped
                 .replaceAll(MULTITINE_BLOCK_COMMENT_TYPE_1, "\n")
                 .replaceAll(MULTILINE_BLOCK_COMMENT_TYPE_2, "\n")
                 .replaceAll(INLINE_BLOCK_COMMENT_TYPE_1, "")
                 .replaceAll(INLINE_BLOCK_COMMENT_TYPE_2, "");
-        return stream(noBlockComments.split("\n"))
+        String noEmptyLines = stream(noBlockComments.split("\n"))
                 .filter(line -> !line.matches(FULL_LINE_COMMENT))
                 .collect(joining("\n"));
+        return noEmptyLines
+                .replaceAll("\\(&\\*", "(*")
+                .replaceAll("\\*&\\)", "*)")
+                .replaceAll("\\(&&", "{")
+                .replaceAll("&&\\)", "}");
     }
 
     public static RegexpService getInstance() {
